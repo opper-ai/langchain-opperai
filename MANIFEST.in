@@ -1,0 +1,4 @@
+include README.md
+include LICENSE
+recursive-include langchain_opper *.py
+recursive-include tests *.py

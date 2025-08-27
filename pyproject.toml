@@ -1,0 +1,70 @@
+[tool.poetry]
+name = "langchain-opper"
+version = "0.1.0"
+description = "LangChain integration for Opper AI platform"
+authors = ["Your Name <your.email@example.com>"]
+readme = "README.md"
+repository = "https://github.com/yourusername/langchain-opper"
+keywords = ["langchain", "opper", "ai", "llm", "chat"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[tool.poetry.urls]
+"Source Code" = "https://github.com/yourusername/langchain-opper"
+"Issue Tracker" = "https://github.com/yourusername/langchain-opper/issues"
+
+[tool.poetry.dependencies]
+python = "^3.9.2"
+langchain-core = "^0.3.0"
+opperai = "^1.0.0"
+pydantic = "^2.0.0"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^7.0.0"
+pytest-socket = "^0.6.0"
+pytest-asyncio = "^0.21.0"
+langchain-tests = "^0.3.0"
+
+[tool.poetry.group.lint.dependencies]
+ruff = "^0.1.5"
+
+[tool.poetry.group.typing.dependencies]
+mypy = "^1.0"
+
+[tool.poetry.group.dev.dependencies]
+langchain-core = {extras = ["dev"], version = "^0.3.0"}
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+select = [
+  "E",  # pycodestyle
+  "F",  # pyflakes
+  "I",  # isort
+  "T201", # print statements
+]
+ignore = ["E501", "E741"]  # line too long, ambiguous variable names
+target-version = "py38"
+
+[tool.ruff.isort]
+known-first-party = ["langchain_opper"]
+
+[tool.mypy]
+ignore_missing_imports = "True"
+disallow_untyped_defs = "True"
+exclude = ["tests"]
+
+[tool.coverage.run]
+omit = ["tests/*"]
