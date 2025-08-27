@@ -14,7 +14,13 @@ Features demonstrated:
 """
 
 import os
+import sys
 from typing import List, Dict, Optional, Any, TypedDict, Annotated
+
+# Add the project root to Python path to use local langchain_opperai
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
+
 from dotenv import load_dotenv
 from rich.console import Console
 from rich.panel import Panel
@@ -26,7 +32,8 @@ from langgraph.graph.message import add_messages
 from langchain_core.messages import HumanMessage, AIMessage
 from pydantic import BaseModel, Field
 
-from langchain_opper import OpperProvider, OpperChatModel
+# Import from local langchain_opperai package
+from langchain_opperai import OpperProvider, ChatOpperAI
 
 load_dotenv()
 console = Console()

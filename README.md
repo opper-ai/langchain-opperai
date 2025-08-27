@@ -14,7 +14,7 @@ A LangChain integration package for [Opper AI](https://opper.ai) that provides c
 ## Installation
 
 ```bash
-pip install langchain-opper
+pip install langchain-opperai
 ```
 
 ## Setup
@@ -30,11 +30,11 @@ export OPPER_API_KEY="your_opper_api_key_here"
 ### Basic Chat Model
 
 ```python
-from langchain_opper import OpperChatModel
+from langchain_opperai import ChatOpperAI
 from langchain_core.messages import HumanMessage
 
 # Initialize the chat model
-llm = OpperChatModel(
+llm = ChatOpperAI(
     task_name="chat",
     model_name="anthropic/claude-3.5-sonnet",
     instructions="You are a helpful AI assistant.",
@@ -49,7 +49,7 @@ print(result.content)  # "The capital of France is Paris."
 ### Structured Output
 
 ```python
-from langchain_opper import OpperChatModel
+from langchain_opperai import ChatOpperAI
 from pydantic import BaseModel, Field
 
 class Joke(BaseModel):
@@ -57,7 +57,7 @@ class Joke(BaseModel):
     punchline: str = Field(description="The joke punchline")
 
 # Create a structured model
-llm = OpperChatModel()
+llm = ChatOpperAI()
 structured_llm = llm.with_structured_output(Joke)
 
 # Get structured output
@@ -69,7 +69,7 @@ print(f"Punchline: {joke.punchline}")
 ### Using the Provider
 
 ```python
-from langchain_opper import OpperProvider
+from langchain_opperai import OpperProvider
 from pydantic import BaseModel, Field
 
 class Response(BaseModel):
@@ -103,7 +103,7 @@ provider.end_trace("Provided Python explanation")
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from langchain_core.messages import HumanMessage
-from langchain_opper import OpperProvider
+from langchain_opperai import OpperProvider
 from typing import TypedDict, Annotated
 
 class State(TypedDict):
@@ -135,7 +135,7 @@ result = app.invoke({
 
 ## API Reference
 
-### OpperChatModel
+### ChatOpperAI
 
 A LangChain chat model that integrates with Opper AI.
 
@@ -156,7 +156,7 @@ A LangChain chat model that integrates with Opper AI.
 A provider class for creating Opper chat models and managing traces.
 
 **Methods:**
-- `create_chat_model(**kwargs)`: Create a new OpperChatModel
+- `create_chat_model(**kwargs)`: Create a new ChatOpperAI
 - `create_structured_model(task_name, instructions, output_schema, **kwargs)`: Create a structured model
 - `start_trace(name, input_data)`: Start a new trace
 - `end_trace(output_data)`: End the current trace
