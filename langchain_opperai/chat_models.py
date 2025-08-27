@@ -91,6 +91,7 @@ class ChatOpperAI(BaseChatModel):
     """
 
     opper_client: Optional[Any] = None
+    api_key: Optional[str] = Field(default=None, description="Opper API key (for testing purposes)")
     task_name: str = Field(default="chat", description="Name for the Opper task")
     model_name: str = Field(default="anthropic/claude-3.5-sonnet", description="Model to use with Opper")
     instructions: str = Field(
@@ -109,9 +110,10 @@ class ChatOpperAI(BaseChatModel):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if self.opper_client is None:
-            api_key = os.getenv("OPPER_API_KEY")
+            # Try to get API key from instance field first (for testing), then environment
+            api_key = self.api_key or os.getenv("OPPER_API_KEY")
             if not api_key:
-                raise ValueError("OPPER_API_KEY environment variable is required")
+                raise ValueError("OPPER_API_KEY environment variable is required or api_key parameter must be provided")
             self.opper_client = Opper(http_bearer=api_key)
     
     @property
@@ -140,10 +142,19 @@ class ChatOpperAI(BaseChatModel):
         **kwargs: Any,
     ) -> "ChatOpperAI":
         """Implement LangChain's standard with_structured_output method for Opper.
-        
+
         This method leverages Opper's native output_schema support directly.
         """
-        if not isinstance(schema, type) or not issubclass(schema, BaseModel):
+        # More flexible schema validation to handle Pydantic v1 and v2
+        if isinstance(schema, dict):
+            raise ValueError("Dictionary schemas are not yet supported, please use a Pydantic BaseModel class")
+        
+        # Check if it's a class and has the right base classes (works for both Pydantic v1 and v2)
+        if not isinstance(schema, type):
+            raise ValueError("Schema must be a Pydantic BaseModel class")
+        
+        # Check if it has the expected Pydantic methods/attributes
+        if not (hasattr(schema, '__fields__') or hasattr(schema, 'model_fields')):
             raise ValueError("Schema must be a Pydantic BaseModel class")
         
         # Create new instance with structured output configuration

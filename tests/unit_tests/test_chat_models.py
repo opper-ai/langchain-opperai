@@ -15,7 +15,8 @@ class TestChatOpperAIUnit(ChatModelUnitTests):
     def chat_model_params(self) -> dict:
         # These should be parameters used to initialize your integration for testing
         return {
-            "model": "bird-brain-001",
-            "temperature": 0,
-            "parrot_buffer_length": 50,
+            "api_key": "test",  # Add API key for testing
+            "task_name": "test_chat",
+            "model_name": "anthropic/claude-3.5-sonnet",
+            "instructions": "You are a helpful test assistant. Provide clear, concise responses.",
         }
