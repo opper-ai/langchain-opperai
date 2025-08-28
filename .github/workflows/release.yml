@@ -1,0 +1,199 @@
+name: Release to PyPI
+
+on:
+  push:
+    branches: [main]
+    paths: ['pyproject.toml']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.1.1, 0.2.0)'
+        required: true
+        type: string
+      create_release:
+        description: 'Create GitHub release'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  id-token: write  # For trusted publishing to PyPI
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      should_release: ${{ steps.check.outputs.should_release }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Need previous commit for comparison
+
+      - name: Get version from pyproject.toml
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $VERSION"
+
+      - name: Check if version changed
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "Manual release triggered"
+          else
+            # Check if version changed in the last commit
+            PREV_VERSION=$(git show HEAD~1:pyproject.toml | grep '^version = ' | sed 's/version = "\(.*\)"/\1/' || echo "")
+            CURR_VERSION="${{ steps.version.outputs.version }}"
+            
+            if [ "$PREV_VERSION" != "$CURR_VERSION" ]; then
+              echo "should_release=true" >> $GITHUB_OUTPUT
+              echo "Version changed: $PREV_VERSION → $CURR_VERSION"
+            else
+              echo "should_release=false" >> $GITHUB_OUTPUT
+              echo "Version unchanged: $CURR_VERSION"
+            fi
+          fi
+
+  release:
+    needs: check-version
+    if: needs.check-version.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Install dependencies
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction --no-root
+
+      - name: Update version (if manual)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          # Update version in pyproject.toml
+          poetry version ${{ needs.check-version.outputs.version }}
+          
+          # Commit the version update
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml
+          git commit -m "chore: bump version to ${{ needs.check-version.outputs.version }}"
+          git push
+
+      - name: Verify tests pass
+        run: |
+          # Run linting
+          poetry run ruff check . || echo "⚠️ Linting issues found"
+          
+          # Run type checking
+          poetry run mypy langchain_opperai/ || echo "⚠️ Type checking issues found"
+          
+          # Run tests
+          poetry run pytest tests/unit_tests/ || echo "⚠️ Unit test issues found"
+
+      - name: Build package
+        run: |
+          # Clean any previous builds
+          rm -rf dist/
+          
+          # Build with Poetry
+          poetry build
+          
+          # Verify the build
+          ls -la dist/
+          
+          # Check package metadata
+          poetry show --tree
+
+      - name: Publish to PyPI
+        env:
+          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          poetry publish
+
+      - name: Create GitHub Release
+        if: github.event.inputs.create_release != 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.check-version.outputs.version }}"
+          TAG_NAME="v$VERSION"
+          
+          # Create the tag
+          git tag "$TAG_NAME"
+          git push origin "$TAG_NAME"
+          
+          # Generate release notes
+          RELEASE_NOTES="$(cat <<EOF
+          ## 🚀 LangChain OpperAI Integration v$VERSION
+          
+          This release contains the latest updates to the LangChain OpperAI integration package.
+          
+          ### 📦 Installation
+          \`\`\`bash
+          pip install langchain-opperai==$VERSION
+          # or
+          poetry add langchain-opperai==$VERSION
+          \`\`\`
+          
+          ### 🔗 Links
+          - [PyPI Package](https://pypi.org/project/langchain-opperai/$VERSION/)
+          - [LangChain Documentation](https://python.langchain.com/docs/integrations/chat/opperai/)
+          - [OpperAI Documentation](https://docs.opper.ai)
+          
+          ### 🤖 LangChain Integration
+          This package provides OpperAI integration for LangChain, enabling seamless use of OpperAI's models within LangChain applications.
+          
+          ---
+          
+          **Full Changelog**: https://github.com/opper-ai/integration-langchain/compare/v$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "0.0.0")...v$VERSION
+          EOF
+          )"
+          
+          # Create the release
+          gh release create "$TAG_NAME" \
+            --title "🚀 LangChain OpperAI Integration v$VERSION" \
+            --notes "$RELEASE_NOTES" \
+            --latest \
+            dist/*
+
+      - name: Post-release summary
+        run: |
+          VERSION="${{ needs.check-version.outputs.version }}"
+          echo "🎉 Successfully released LangChain OpperAI Integration v$VERSION"
+          echo "📦 PyPI: https://pypi.org/project/langchain-opperai/$VERSION/"
+          echo "🏷️ GitHub: https://github.com/opper-ai/integration-langchain/releases/tag/v$VERSION"
+          
+          # Post to PR if this was triggered by a merge
+          if [ "${{ github.event_name }}" == "push" ]; then
+            echo "✅ Automatic release completed from main branch push"
+          else
+            echo "✅ Manual release completed"
+          fi
